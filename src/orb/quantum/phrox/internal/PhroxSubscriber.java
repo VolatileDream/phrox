@@ -31,7 +31,7 @@ public class PhroxSubscriber implements AutoCloseable, Runnable {
 	public void run() {
 		byte[] data = _clientSocket.recv(ZMQ.DONTWAIT);
 
-		if( data != null ){
+		if( _handler != null && data != null ){
 			_handler.handleData(data);
 		}
 

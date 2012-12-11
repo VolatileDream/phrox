@@ -1,6 +1,7 @@
 package orb.quantum.phrox.internal;
 
 import java.security.MessageDigest;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,7 +14,7 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 	private final MessageDigest _digest;
 	private final PhroxMessageHandler _subHandler;
 
-	private final Map<byte[], Long> hashTimeMap = new HashMap<>();
+	private final Map<HashCode, Long> hashTimeMap = new HashMap<>();
 
 	public PhroxDeduplicator( PhroxDeduplicator dedup, PhroxMessageHandler handler){
 		this._digest = dedup._digest;
@@ -40,10 +41,12 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 		_digest.reset();
 		byte[] hash = _digest.digest(data);
 
-		Long previous = hashTimeMap.get(hash);
+		HashCode key = new HashCode(hash);
+		
+		Long previous = hashTimeMap.get(key);
 		
 		// put the current thing in.
-		hashTimeMap.put(hash, now);
+		hashTimeMap.put(key, now);
 
 		return previous != null && now <= previous + TIMEOUT;
 	}
@@ -53,4 +56,32 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 		hashTimeMap.clear();
 	}
 
+	private static class HashCode {
+		private final byte[] data;
+		protected HashCode(byte[] data){
+			this.data = data;
+		}
+		@Override
+		public int hashCode(){
+			int hashcode=0;
+			for( int wrap=0, i=0; i < data.length ; i++, wrap=(wrap+1)%4 ){
+				hashcode ^= (data[i] << (4*wrap));
+			}
+			return hashcode;
+		}
+		public boolean equals(Object o){
+			if( o instanceof HashCode){
+				HashCode other = (HashCode) o;
+				if( other.data.length == data.length )
+				for( int i=0; i < data.length; i++ ){
+					if( other.data[i] != data[i] ){
+						return false;
+					}
+				}
+				return true;
+			}
+			return false;
+		}
+	}
+	
 }

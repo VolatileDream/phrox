@@ -60,8 +60,9 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 		
 		try {
 			PhroxLocation local = new PhroxLocation(_localAddress, _pubPort);
+			
 			PhroxLocation remote = client.connect(new Authorization(), local);
-			System.out.println("PhroxConnector:" + remote +" - " + local);
+			
 			_subscriber.connect(remote.host, remote.port);
 		} catch (NotAuthorized e) {
 			e.printStackTrace();
