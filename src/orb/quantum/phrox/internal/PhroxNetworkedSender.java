@@ -13,7 +13,9 @@ public class PhroxNetworkedSender implements PhroxMessageHandler {
 	}
 	
 	@Override
-	public void close() throws Exception {}
+	public void close() throws Exception {
+		if( _nextHandler != null ) _nextHandler.close();
+	}
 
 	@Override
 	public void handleData(byte[] data) {

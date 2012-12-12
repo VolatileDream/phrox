@@ -20,7 +20,7 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 		this._subHandler = handler;
 		this.hashTimeMap.putAll( dedup.hashTimeMap );
 	}
-	
+
 	public PhroxDeduplicator( MessageDigest dig, PhroxMessageHandler handler) {
 		_digest = dig;
 		_subHandler = handler;
@@ -41,9 +41,9 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 		byte[] hash = _digest.digest(data);
 
 		HashCode key = new HashCode(hash);
-		
+
 		Long previous = hashTimeMap.get(key);
-		
+
 		// put the current thing in.
 		hashTimeMap.put(key, now);
 
@@ -52,7 +52,10 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 
 	@Override
 	public void close() throws Exception {
+		//maybe these two operations clear memory?
 		hashTimeMap.clear();
+		_digest.reset();
+		if( _subHandler != null ) _subHandler.close();
 	}
 
 	private static class HashCode {
@@ -72,15 +75,15 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 			if( o instanceof HashCode){
 				HashCode other = (HashCode) o;
 				if( other.data.length == data.length )
-				for( int i=0; i < data.length; i++ ){
-					if( other.data[i] != data[i] ){
-						return false;
+					for( int i=0; i < data.length; i++ ){
+						if( other.data[i] != data[i] ){
+							return false;
+						}
 					}
-				}
 				return true;
 			}
 			return false;
 		}
 	}
-	
+
 }

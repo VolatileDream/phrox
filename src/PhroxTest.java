@@ -40,11 +40,9 @@ public class PhroxTest {
 
 		System.out.println("Connected");
 		
-		for (int i = 0; i < 15; i++) {
-			ph.sendMessage("hello world".getBytes());
-			System.out.println("SENT " + i );
-			Thread.sleep(5000);
-		}
+		ph.sendMessage("hello world".getBytes());
+	
+		Thread.sleep(1000);
 		
 		ph.close();
 		System.out.println("CLOSED");
