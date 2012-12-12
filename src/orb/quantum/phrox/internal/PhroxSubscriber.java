@@ -44,7 +44,15 @@ public class PhroxSubscriber implements AutoCloseable, Runnable {
 	}
 
 	public void setHandler( PhroxMessageHandler pmh ){
+		PhroxMessageHandler old = _handler;
+		
 		_handler = pmh;
+		
+		try {
+			old.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void connect(String host, int port) {
