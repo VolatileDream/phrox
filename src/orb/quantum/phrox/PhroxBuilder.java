@@ -4,12 +4,13 @@ import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Enumeration;
-import java.util.concurrent.ExecutorService;
 
 import orb.quantum.phrox.internal.PhroxConnector;
 import orb.quantum.phrox.internal.PhroxDeduplicator;
 import orb.quantum.phrox.internal.PhroxImpl;
+import orb.quantum.phrox.internal.PhroxNetworkedSender;
 import orb.quantum.phrox.internal.PhroxPublisher;
 import orb.quantum.phrox.internal.PhroxSubscriber;
 
@@ -19,76 +20,118 @@ import org.zeromq.ZMQ.Context;
 
 public class PhroxBuilder {
 
-	private MessageDigest digest;
-	private ExecutorService exec;
+	private MessageDigest digest = null;
+
+	private boolean useConnector;
 	private int connectorPort;
-	private int messengerPort;
+
+	private int messengerPort = -1;
 	
+	private PhroxMessageHandler messageHandler;
+
 	public Phrox build( Context context ) {
-		String address;
-		try {
-			address = getLocalIP();
-		} catch (SocketException e) {
-			throw new RuntimeException(e);
+		
+		MessageDigest hashAlgo = digest;
+		
+		if( messengerPort <= 0 ){
+			throw new IllegalArgumentException("Messenger port must be set");
 		}
 		
-		PhroxDeduplicator handler = new PhroxDeduplicator(digest, null);
-		
-		PhroxSubscriber sub = new PhroxSubscriber(context, exec, handler);
-		
-		PhroxConnector connect;
-		try {
-			connect = new PhroxConnector(address, connectorPort, messengerPort, sub);
-		} catch (TTransportException e) {
+		try{
+			String address = getLocalIP();
+
+			PhroxPublisher publisher = new PhroxPublisher(context, messengerPort);
+			
+			PhroxMessageHandler handler = null;
+
+			if( hashAlgo == null ){
+				System.err.println("No hashing algorithm set, defaulting to MD5");
+				hashAlgo = MessageDigest.getInstance("MD5");
+			}
+
+			// no point to build it if no one will handle the messages...
+			if( messageHandler != null ){
+				// send to everyone we know
+				handler = new PhroxNetworkedSender(publisher, messageHandler);
+				// after having filtered out duplicates
+				handler = new PhroxDeduplicator(hashAlgo, handler);
+			}
+			
+			PhroxSubscriber subscriber = new PhroxSubscriber(context, handler);
+
+			PhroxConnector connect = null;
+
+			if( useConnector ){
+				connect = new PhroxConnector(address, connectorPort, messengerPort, subscriber);
+			}
+
+			return new PhroxImpl(context, connect, publisher, subscriber, hashAlgo);
+			
+		} catch (SocketException | TTransportException | NoSuchAlgorithmException e) {
 			throw new RuntimeException(e);
 		}
-		
-		PhroxPublisher msg = new PhroxPublisher(context, messengerPort);
-		
-		return new PhroxImpl(context, connect, msg, sub, digest);
 	}
-	
-	public PhroxBuilder messageDigest( MessageDigest md ){
+
+	/**
+	 * Sets the Hashing Algorithm to be used for
+	 * filtering out duplicate messages
+	 * @param md The Hashing Algorithm to use
+	 */
+	public PhroxBuilder filterOutDuplicatesWith( MessageDigest md ){
 		digest = md;
 		return this;
 	}
-	
-	public PhroxBuilder connectionPort( int port ){
+
+	public PhroxBuilder noConnector(){
+		useConnector = false;
+		return this;
+	}
+
+	/**
+	 * Sets the port to bind to when listening for
+	 * new subscriptions. This is used to create
+	 * a connected graph, and ensure that we 
+	 * subscribe to all the people that are
+	 * subscribed to us.
+	 * @param port To use for the "Mutual Subscription Protocol"
+	 */
+	public PhroxBuilder useConnectorOnPort( int port ){
 		connectorPort = port;
+		useConnector = true;
+		return this;
+	}
+
+	public PhroxBuilder useMessageHandler( PhroxMessageHandler handler ){
+		messageHandler = handler;
 		return this;
 	}
 	
-	public PhroxBuilder messagePort( int port ){
+	public PhroxBuilder publishMessagesOnPort( int port ){
 		messengerPort = port;
 		return this;
 	}
-	
-	public PhroxBuilder executorService( ExecutorService service ){
-		exec = service;
-		return this;
+
+	private static String getLocalIP() throws SocketException
+	{
+		Enumeration<NetworkInterface> nifs = NetworkInterface.getNetworkInterfaces();
+		if (nifs == null) throw new RuntimeException("No local network interfaces");
+
+		while (nifs.hasMoreElements())
+		{
+			NetworkInterface nif = nifs.nextElement();
+			// We ignore subinterfaces - as not yet needed.
+
+			Enumeration<InetAddress> adrs = nif.getInetAddresses();
+			while (adrs.hasMoreElements())
+			{
+				InetAddress adr = adrs.nextElement();
+				if (adr != null && !adr.isLoopbackAddress() && (nif.isPointToPoint() || !adr.isLinkLocalAddress()))
+				{
+					return adr.getHostAddress();
+				}
+			}
+		}
+		throw new RuntimeException("Not connected to any network");
 	}
-	
-    private static String getLocalIP() throws SocketException
-    {
-        Enumeration<NetworkInterface> nifs = NetworkInterface.getNetworkInterfaces();
-        if (nifs == null) throw new RuntimeException("No local network interfaces");
 
-        while (nifs.hasMoreElements())
-        {
-            NetworkInterface nif = nifs.nextElement();
-            // We ignore subinterfaces - as not yet needed.
-
-            Enumeration<InetAddress> adrs = nif.getInetAddresses();
-            while (adrs.hasMoreElements())
-            {
-                InetAddress adr = adrs.nextElement();
-                if (adr != null && !adr.isLoopbackAddress() && (nif.isPointToPoint() || !adr.isLinkLocalAddress()))
-                {
-                    return adr.getHostAddress();
-                }
-            }
-        }
-        throw new RuntimeException("Not connected to any network");
-    }
-	
 }

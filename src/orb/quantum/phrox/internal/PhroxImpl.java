@@ -8,7 +8,7 @@ import orb.quantum.phrox.PhroxMessageHandler;
 import org.zeromq.ZMQ.Context;
 
 public class PhroxImpl implements Phrox, AutoCloseable {
-
+	
 	private final PhroxConnector _connector;
 	private final PhroxPublisher _publisher;
 	private final PhroxSubscriber _subscriber;
@@ -25,13 +25,17 @@ public class PhroxImpl implements Phrox, AutoCloseable {
 	public void start(){
 		_publisher.start();
 		_subscriber.start();
-		_connector.start();
+		if( _connector != null ) _connector.start();
 	}
 	
 	@Override
 	public void connect( String addr, int port ) {
 		try {
-			_connector.connect(addr, port);
+			if( _connector != null ) {
+				_connector.connect(addr, port);
+			}else{
+				_subscriber.connect(addr, port);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -49,12 +53,20 @@ public class PhroxImpl implements Phrox, AutoCloseable {
 	
 	@Override
 	public void setHandler( PhroxMessageHandler pmh ){
-		_subscriber.setHandler( new PhroxDeduplicator(_digest, pmh));
+		
+		// we want to publish it to everyone we know, and then handle it.
+		pmh = new PhroxNetworkedSender(_publisher, pmh);
+		
+		// we want to make sure we filter out duplicate messages
+		pmh = new PhroxDeduplicator(_digest,pmh);
+		
+		// set it all up
+		_subscriber.setHandler(pmh);
 	}
 	
 	@Override
 	public void close() throws Exception {
-		_connector.close();
+		if( _connector != null ) _connector.close();
 		_publisher.close();
 		_subscriber.close();
 	}

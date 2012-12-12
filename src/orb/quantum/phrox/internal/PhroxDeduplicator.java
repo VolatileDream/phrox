@@ -1,7 +1,6 @@
 package orb.quantum.phrox.internal;
 
 import java.security.MessageDigest;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -1,7 +1,5 @@
 package orb.quantum.phrox.internal;
 
-import java.util.concurrent.ExecutorService;
-
 import orb.quantum.phrox.PhroxMessageHandler;
 
 import org.zeromq.ZMQ;
@@ -11,36 +9,37 @@ import org.zeromq.ZMQ.Socket;
 public class PhroxSubscriber implements AutoCloseable, Runnable {
 
 	private final Socket _clientSocket;
-	private final ExecutorService _service;
+	private Thread _thread;
 	private PhroxMessageHandler _handler;
 
 	private volatile boolean _isRunning = true;
 
-	public PhroxSubscriber( Context con, ExecutorService serv, PhroxMessageHandler handler) {
+	public PhroxSubscriber( Context con, PhroxMessageHandler handler) {
 		_clientSocket = con.socket(ZMQ.SUB);
 		_handler = handler;
-		_service = serv;
 	}
 
 	public void start(){
-		_service.execute( this );
+		_thread = new Thread(this);
+		_thread.setDaemon(true);
+		_thread.start();
 		_clientSocket.subscribe("".getBytes());
+		
+		// on close this is how long (ms) we wait before trashing the socket + waiting messages
+		_clientSocket.setLinger(100);
+		
+		_clientSocket.setReceiveTimeOut(1000);
 	}
 
 	@Override
 	public void run() {
-		byte[] data = _clientSocket.recv(ZMQ.DONTWAIT);
-
-		if( _handler != null && data != null ){
-			_handler.handleData(data);
-		}
-
-		tryContinue();
-	}
-
-	private void tryContinue(){
-		if( _isRunning ){
-			_service.execute(this);
+		while( _isRunning ){
+			// this blocks nicely so we don't waste CPU
+			byte[] data = _clientSocket.recv(0);
+	
+			if( _handler != null && data != null ){
+				_handler.handleData(data);
+			}
 		}
 	}
 
@@ -59,8 +58,9 @@ public class PhroxSubscriber implements AutoCloseable, Runnable {
 	@Override
 	public void close() throws Exception {
 		_isRunning = false;
+		if( _thread != null ) _thread.interrupt();
 		_clientSocket.close();
-		_handler.close();
+		if( _handler != null ) _handler.close();
 	}
 
 }

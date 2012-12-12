@@ -1,6 +1,3 @@
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import orb.quantum.phrox.PhroxMessageHandler;
 import orb.quantum.phrox.internal.PhroxPublisher;
 import orb.quantum.phrox.internal.PhroxSubscriber;
@@ -13,14 +10,13 @@ public class PubSubTest {
 
 	/**
 	 * @param args
+	 * @throws Exception 
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		Context con = ZMQ.context(1);
-		
-		ExecutorService serv = Executors.newSingleThreadExecutor();
-		
+				
 		PhroxPublisher pub = new PhroxPublisher(con, 8080);
-		PhroxSubscriber sub = new PhroxSubscriber(con, serv, new PhroxMessageHandler() {
+		PhroxSubscriber sub = new PhroxSubscriber(con, new PhroxMessageHandler() {
 			@Override
 			public void close() throws Exception {
 			}
@@ -37,8 +33,10 @@ public class PubSubTest {
 		
 		sub.connect("localhost", 8080);
 		
-		
 		pub.sendMessage("hello world".getBytes());
+		
+		pub.close();
+		sub.close();
 	}
 
 }
