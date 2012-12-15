@@ -13,6 +13,7 @@ import orb.quantum.phrox.internal.PhroxImpl;
 import orb.quantum.phrox.internal.PhroxNetworkedSender;
 import orb.quantum.phrox.internal.PhroxPublisher;
 import orb.quantum.phrox.internal.PhroxSubscriber;
+import orb.quantum.phrox.internal.TimeProvider;
 
 import org.apache.thrift.transport.TTransportException;
 import org.zeromq.ZMQ.Context;
@@ -20,6 +21,13 @@ import org.zeromq.ZMQ.Context;
 
 public class PhroxBuilder {
 
+	public static final TimeProvider SYSTEM_TIME_PROVIDER = new TimeProvider() {
+		@Override
+		public long getCurrentTime() {
+			return System.currentTimeMillis();
+		}
+	};
+	
 	private MessageDigest digest = null;
 
 	private boolean useConnector;
@@ -54,7 +62,7 @@ public class PhroxBuilder {
 				// send to everyone we know
 				handler = new PhroxNetworkedSender(publisher, messageHandler);
 				// after having filtered out duplicates
-				handler = new PhroxDeduplicator(hashAlgo, handler);
+				handler = new PhroxDeduplicator(SYSTEM_TIME_PROVIDER, hashAlgo, handler);
 			}
 			
 			PhroxSubscriber subscriber = new PhroxSubscriber(context, handler);
