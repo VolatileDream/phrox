@@ -36,16 +36,19 @@ public class PhroxTest {
 		
 		System.out.println("Started");
 		
-		ph2.connect("192.168.1.5", 8080);
+		ph2.subscribe("192.168.1.5", 8080);
 
 		System.out.println("Connected");
 		
 		ph.sendMessage("hello world".getBytes());
 	
-		Thread.sleep(1000);
+		Thread.sleep(200);
 		
 		ph.close();
+		ph2.close();
 		System.out.println("CLOSED");
+		
+		context.term();
 	}
 	
 }

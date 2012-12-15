@@ -1,6 +1,7 @@
 package orb.quantum.phrox.internal;
 
 import orb.quantum.phrox.PhroxMessageHandler;
+import orb.quantum.phrox.Subscription;
 
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
@@ -28,12 +29,12 @@ public class PhroxSubscriber implements AutoCloseable, Runnable {
 		// on close this is how long (ms) we wait before trashing the socket + waiting messages
 		_clientSocket.setLinger(100);
 		
-		_clientSocket.setReceiveTimeOut(1000);
+		_clientSocket.setReceiveTimeOut(100);
 	}
 
 	@Override
 	public void run() {
-		while( _isRunning ){
+		while( _isRunning && ! _thread.isInterrupted() ){
 			// this blocks nicely so we don't waste CPU
 			byte[] data = _clientSocket.recv(0);
 	
@@ -55,8 +56,14 @@ public class PhroxSubscriber implements AutoCloseable, Runnable {
 		}
 	}
 
-	public void connect(String host, int port) {
+	public Subscription connect(final String host, final int port) {
 		_clientSocket.connect("tcp://" + host + ":" + port);
+		return new Subscription() {
+			@Override
+			public void close() throws Exception {
+				disconnect(host, port);
+			}
+		};
 	}
 
 	public void disconnect(String host, int port) {

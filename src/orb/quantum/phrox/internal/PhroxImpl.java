@@ -4,6 +4,7 @@ import java.security.MessageDigest;
 
 import orb.quantum.phrox.Phrox;
 import orb.quantum.phrox.PhroxMessageHandler;
+import orb.quantum.phrox.Subscription;
 
 import org.zeromq.ZMQ.Context;
 
@@ -29,20 +30,21 @@ public class PhroxImpl implements Phrox, AutoCloseable {
 	}
 	
 	@Override
-	public void connect( String addr, int port ) {
+	public Subscription subscribe( String addr, int port ) {
 		try {
 			if( _connector != null ) {
-				_connector.connect(addr, port);
+				return _connector.connect(addr, port);
 			}else{
-				_subscriber.connect(addr, port);
+				return _subscriber.connect(addr, port);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return null;
 	}
 	
 	@Override
-	public void disconnect( String addr, int port ){
+	public void unsubscribe( String addr, int port ){
 		_subscriber.disconnect(addr, port);
 	}
 	

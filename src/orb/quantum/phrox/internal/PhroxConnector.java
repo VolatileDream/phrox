@@ -1,5 +1,6 @@
 package orb.quantum.phrox.internal;
 
+import orb.quantum.phrox.Subscription;
 import orb.quantum.phrox.build.ThriftClientBuilder;
 import orb.quantum.phrox.build.ThriftProtocol;
 import orb.quantum.phrox.build.ThriftServerBuilder;
@@ -22,6 +23,7 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 	private final int _pubPort;
 	private final PhroxSubscriber _subscriber;
 	private final TServer _server;
+	private Thread _thread;
 	
 	public PhroxConnector(String localAddress, int replyPort, int pubPort, PhroxSubscriber msg) throws TTransportException{
 		_localAddress = localAddress;
@@ -37,16 +39,17 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 	}
 
 	public void start(){
-		Thread t = new Thread(new Runnable(){
+		_thread = new Thread(new Runnable(){
 			@Override
 			public void run() {
 				_server.serve();
 			}
 		});
-		t.start();
+		_thread.setDaemon(true);
+		_thread.start();
 	}
 	
-	public void connect( String host, int port ) throws TException{
+	public Subscription connect( String host, int port ) throws TException{
 		ThriftClientBuilder builder = new ThriftClientBuilder();
 		builder
 			.address(host)
@@ -63,10 +66,14 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 			
 			PhroxLocation remote = client.connect(new Authorization(), local);
 			
-			_subscriber.connect(remote.host, remote.port);
+			return _subscriber.connect(remote.host, remote.port);
 		} catch (NotAuthorized e) {
 			e.printStackTrace();
+		}finally{
+			client.getOutputProtocol().getTransport().close();
+			client.getInputProtocol().getTransport().close();
 		}
+		return null;
 	}
 	
 	@Override
@@ -85,5 +92,6 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 	@Override
 	public void close() throws Exception {
 		_server.stop();
+		_thread.interrupt();
 	}
 }
