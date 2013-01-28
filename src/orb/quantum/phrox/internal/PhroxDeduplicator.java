@@ -8,20 +8,23 @@ import orb.quantum.phrox.PhroxMessageHandler;
 
 public class PhroxDeduplicator implements PhroxMessageHandler {
 
-	private static final long TIMEOUT = 60_000;
+	public static final long TIMEOUT = 60_000;
 
+	private final TimeProvider _provider;
 	private final MessageDigest _digest;
 	private final PhroxMessageHandler _subHandler;
 
 	private final Map<HashCode, Long> hashTimeMap = new HashMap<>();
 
 	public PhroxDeduplicator( PhroxDeduplicator dedup, PhroxMessageHandler handler){
+		this._provider = dedup._provider;
 		this._digest = dedup._digest;
 		this._subHandler = handler;
 		this.hashTimeMap.putAll( dedup.hashTimeMap );
 	}
 
-	public PhroxDeduplicator( MessageDigest dig, PhroxMessageHandler handler) {
+	public PhroxDeduplicator(TimeProvider provider, MessageDigest dig, PhroxMessageHandler handler) {
+		_provider = provider;
 		_digest = dig;
 		_subHandler = handler;
 	}

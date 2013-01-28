@@ -3,6 +3,7 @@ package orb.quantum.phrox.internal;
 import java.security.MessageDigest;
 
 import orb.quantum.phrox.Phrox;
+import orb.quantum.phrox.PhroxBuilder;
 import orb.quantum.phrox.PhroxMessageHandler;
 import orb.quantum.phrox.Subscription;
 
@@ -60,7 +61,7 @@ public class PhroxImpl implements Phrox, AutoCloseable {
 		pmh = new PhroxNetworkedSender(_publisher, pmh);
 		
 		// we want to make sure we filter out duplicate messages
-		pmh = new PhroxDeduplicator(_digest,pmh);
+		pmh = new PhroxDeduplicator(PhroxBuilder.SYSTEM_TIME_PROVIDER,_digest,pmh);
 		
 		// set it all up
 		_subscriber.setHandler(pmh);
