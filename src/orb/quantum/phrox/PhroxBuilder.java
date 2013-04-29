@@ -90,6 +90,11 @@ public class PhroxBuilder {
 		return this;
 	}
 
+	/**
+	 * Turns of the Connector
+	 * @see #useConnectorOnPort 
+	 * @return this
+	 */
 	public PhroxBuilder noConnector(){
 		useConnector = false;
 		return this;
