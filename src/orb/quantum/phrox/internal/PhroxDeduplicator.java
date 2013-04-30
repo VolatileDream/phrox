@@ -38,7 +38,7 @@ public class PhroxDeduplicator implements PhroxMessageHandler {
 
 	private boolean isDuplicate( byte[] data ){
 
-		long now = System.currentTimeMillis();
+		long now = _provider.getCurrentTime();
 
 		_digest.reset();
 		byte[] hash = _digest.digest(data);
