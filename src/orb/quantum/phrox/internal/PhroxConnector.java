@@ -17,7 +17,7 @@ import org.apache.thrift.transport.TTransportException;
 public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseable {
 
 	private static final boolean https = false;
-	private static final ThriftProtocol protocol = ThriftProtocol.Binary;
+	private static final ThriftProtocol protocol = ThriftProtocol.Json;
 	
 	private final String _localAddress;
 	private final int _pubPort;
@@ -49,7 +49,7 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 		_thread.start();
 	}
 	
-	public Subscription connect( String host, int port ) throws TException{
+	public Subscription connect( Authorization auth, String host, int port ) throws TException{
 		ThriftClientBuilder builder = new ThriftClientBuilder();
 		builder
 			.address(host)
@@ -64,16 +64,17 @@ public class PhroxConnector implements PhroxConnectionHandler.Iface, AutoCloseab
 		try {
 			PhroxLocation local = new PhroxLocation(_localAddress, _pubPort);
 			
-			PhroxLocation remote = client.connect(new Authorization(), local);
+			PhroxLocation remote = client.connect(auth, local);
 			
 			return _subscriber.connect(remote.host, remote.port);
-		} catch (NotAuthorized e) {
-			e.printStackTrace();
 		}finally{
 			client.getOutputProtocol().getTransport().close();
 			client.getInputProtocol().getTransport().close();
 		}
-		return null;
+	}
+	
+	public Subscription connect( String host, int port ) throws TException {
+		return this.connect(new Authorization(), host, port);
 	}
 	
 	@Override

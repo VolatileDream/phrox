@@ -6,6 +6,7 @@ import orb.quantum.phrox.Phrox;
 import orb.quantum.phrox.PhroxBuilder;
 import orb.quantum.phrox.PhroxMessageHandler;
 import orb.quantum.phrox.Subscription;
+import orb.quantum.phrox.internal.thrift.Authorization;
 
 import org.zeromq.ZMQ.Context;
 
@@ -28,6 +29,20 @@ public class PhroxImpl implements Phrox, AutoCloseable {
 		_publisher.start();
 		_subscriber.start();
 		if( _connector != null ) _connector.start();
+	}
+	
+	@Override
+	public Subscription subscribe( Authorization auth, String addr, int port ) {
+		try {
+			if( _connector != null ) {
+				return _connector.connect(addr, port);
+			}else{
+				System.err.println("Passing Authorization without using PhroxConnector");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 	
 	@Override
